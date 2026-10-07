@@ -1,0 +1,26 @@
+---
+import type { Post } from '../lib/posts';
+import PostCard from './PostCard.astro';
+
+interface Props {
+  posts: Post[];
+  headingLevel?: 2 | 3;
+  emptyMessage?: string;
+}
+
+const { posts, headingLevel = 2, emptyMessage = '아직 작성된 글이 없습니다.' } = Astro.props;
+---
+
+{
+  posts.length > 0 ? (
+    <ul class="post-list">
+      {posts.map((post) => (
+        <li>
+          <PostCard post={post} headingLevel={headingLevel} />
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="empty-state">{emptyMessage}</p>
+  )
+}

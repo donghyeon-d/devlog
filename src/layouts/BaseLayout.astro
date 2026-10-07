@@ -1,0 +1,46 @@
+---
+import '../styles/global.css';
+import BaseHead, { type SeoProps } from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Sidebar from '../components/Sidebar.astro';
+import Footer from '../components/Footer.astro';
+import { SITE } from '../config';
+
+interface Props extends SeoProps {
+  /** 본문 영역 너비: default(목록), wide(글 + 목차) */
+  width?: 'default' | 'wide';
+}
+
+const { width = 'default', ...seo } = Astro.props;
+
+/**
+ * base 와 .html / index 를 제거한 현재 경로
+ * 예) /devlog/blog/linux/wsl-keep-alive.html → /blog/linux/wsl-keep-alive
+ */
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+let currentPath = Astro.url.pathname
+  .slice(base.length)
+  .replace(/\.html$/, '')
+  .replace(/\/index$/, '')
+  .replace(/\/$/, '');
+if (!currentPath.startsWith('/')) currentPath = `/${currentPath}`;
+---
+
+<!doctype html>
+<html lang={SITE.lang}>
+  <head>
+    <BaseHead {...seo} canonicalPath={currentPath} />
+    <slot name="head" />
+  </head>
+  <body>
+    <a href="#main" class="skip-link">본문으로 건너뛰기</a>
+    <Header currentPath={currentPath} />
+    <div class="layout" id="top">
+      <Sidebar currentPath={currentPath} />
+      <main id="main" class:list={['main', `main-${width}`]} tabindex="-1">
+        <slot />
+      </main>
+    </div>
+    <Footer />
+  </body>
+</html>

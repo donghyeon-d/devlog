@@ -1,0 +1,176 @@
+---
+import type { MarkdownHeading } from 'astro';
+import BaseLayout from './BaseLayout.astro';
+import PostMeta from '../components/PostMeta.astro';
+import Tag from '../components/Tag.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import PostNavigation from '../components/PostNavigation.astro';
+import RelatedPosts from '../components/RelatedPosts.astro';
+import { SITE } from '../config';
+import { categoryUrl, postReadingTime, postUrl, type Post } from '../lib/posts';
+import { withBase } from '../lib/utils';
+import '../styles/prose.css';
+
+interface Props {
+  post: Post;
+  headings: MarkdownHeading[];
+  prev?: Post;
+  next?: Post;
+  related: Post[];
+}
+
+const { post, headings, prev, next, related } = Astro.props;
+const { title, description, date, updated, category, tags, draft } = post.data;
+const url = new URL(postUrl(post), Astro.site).href;
+const hasToc = headings.some((heading) => heading.depth === 2 || heading.depth === 3);
+
+const article = {
+  '@type': 'BlogPosting',
+  headline: title,
+  description,
+  datePublished: date.toISOString(),
+  dateModified: (updated ?? date).toISOString(),
+  author: { '@type': 'Person', name: SITE.author },
+  publisher: { '@type': 'Person', name: SITE.author },
+  mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+  url,
+  articleSection: category,
+  keywords: tags.join(', '),
+  inLanguage: SITE.lang,
+};
+
+const breadcrumb = {
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: SITE.title, item: new URL(Astro.site ?? '').href },
+    { '@type': 'ListItem', position: 2, name: category, item: new URL(categoryUrl(category), Astro.site).href },
+    { '@type': 'ListItem', position: 3, name: title, item: url },
+  ],
+};
+
+const jsonLd = { '@context': 'https://schema.org', '@graph': [article, breadcrumb] };
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  type="article"
+  publishedTime={date}
+  modifiedTime={updated}
+  tags={tags}
+  noindex={draft}
+  jsonLd={jsonLd}
+  width="wide"
+>
+  <div class:list={['post-layout', { 'has-toc': hasToc }]}>
+    <article class="post" data-pagefind-body>
+      <header class="post-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb" data-pagefind-ignore>
+          <a href={withBase('/blog')}>글</a>
+          <span aria-hidden="true">/</span>
+          <a href={categoryUrl(category)}>{category}</a>
+        </nav>
+        {draft && <p class="draft-notice" data-pagefind-ignore>Draft — production build 에서는 노출되지 않습니다.</p>}
+        <h1 class="post-title" data-pagefind-meta="title">{title}</h1>
+        <p class="post-description">{description}</p>
+        <div data-pagefind-ignore>
+          <PostMeta date={date} updated={updated} category={category} readingTime={postReadingTime(post)} />
+        </div>
+        {
+          tags.length > 0 && (
+            <ul class="tag-list post-tags" aria-label="태그">
+              {tags.map((tag) => (
+                <li>
+                  <Tag name={tag} size="sm" />
+                </li>
+              ))}
+            </ul>
+          )
+        }
+        <span hidden data-pagefind-filter="category">{category}</span>
+        <span hidden data-pagefind-meta="date">{date.toISOString().slice(0, 10)}</span>
+      </header>
+
+      {hasToc && <TableOfContents headings={headings} variant="inline" />}
+
+      <div class="prose">
+        <slot />
+      </div>
+    </article>
+
+    {
+      hasToc && (
+        <aside class="post-toc">
+          <TableOfContents headings={headings} variant="aside" />
+        </aside>
+      )
+    }
+  </div>
+
+  <footer class="post-footer">
+    <PostNavigation prev={prev} next={next} />
+    <RelatedPosts posts={related} />
+  </footer>
+</BaseLayout>
+
+<script>
+  // 코드 블록 Copy 버튼
+  document.addEventListener('click', async (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-copy]');
+    if (!button) return;
+    const code = button.closest('.code-block')?.querySelector('pre code');
+    if (!code) return;
+
+    try {
+      await navigator.clipboard.writeText(code.textContent ?? '');
+      button.textContent = 'Copied!';
+      button.classList.add('is-copied');
+    } catch {
+      button.textContent = 'Failed';
+    }
+    window.setTimeout(() => {
+      button.textContent = 'Copy';
+      button.classList.remove('is-copied');
+    }, 1800);
+  });
+
+  // 목차: 현재 읽고 있는 섹션 표시
+  const links = new Map<string, HTMLAnchorElement>();
+  document.querySelectorAll<HTMLAnchorElement>('[data-toc-link]').forEach((link) => {
+    links.set(link.dataset.tocLink!, link);
+  });
+
+  if (links.size > 0 && 'IntersectionObserver' in window) {
+    const headings = [...links.keys()]
+      .map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null);
+    const visible = new Set<string>();
+
+    const setActive = (id: string | undefined) => {
+      links.forEach((link, key) => {
+        if (key === id) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      });
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target.id);
+          else visible.delete(entry.target.id);
+        }
+        // 화면 상단 영역에 걸친 heading 중 문서상 가장 앞의 것을 활성화.
+        // 없으면 화면 위로 지나간 마지막 heading 을 유지한다.
+        const firstVisible = headings.find((h) => visible.has(h.id));
+        if (firstVisible) {
+          setActive(firstVisible.id);
+        } else {
+          const passed = headings.filter((h) => h.getBoundingClientRect().top < 120);
+          setActive(passed.at(-1)?.id);
+        }
+      },
+      { rootMargin: '-72px 0px -65% 0px' },
+    );
+    headings.forEach((heading) => observer.observe(heading));
+  }
+</script>

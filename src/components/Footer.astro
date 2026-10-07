@@ -1,0 +1,28 @@
+---
+import { SITE } from '../config';
+import { withBase } from '../lib/utils';
+import Icon from './Icon.astro';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <p>© {year} {SITE.author}. All rights reserved.</p>
+    <ul class="site-footer-links">
+      <li>
+        <a href={withBase('/rss.xml')}><Icon name="rss" size={15} /> RSS</a>
+      </li>
+      <li><a href={withBase('/sitemap-index.xml')}>Sitemap</a></li>
+      {
+        SITE.github && (
+          <li>
+            <a href={SITE.github} target="_blank" rel="noopener noreferrer">
+              GitHub
+            </a>
+          </li>
+        )
+      }
+    </ul>
+  </div>
+</footer>

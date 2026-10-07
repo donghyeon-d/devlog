@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import Icon from '../../components/Icon.astro';
+import { categoryUrl, getCategories, getPosts, postUrl } from '../../lib/posts';
+import { slugify } from '../../lib/utils';
+
+const posts = await getPosts();
+const categories = getCategories(posts).map((category) => ({
+  ...category,
+  latest: posts.filter((post) => slugify(post.data.category) === category.slug).slice(0, 3),
+}));
+---
+
+<BaseLayout title="카테고리" description="주제별로 분류한 글 목록입니다.">
+  <PageHeader title="카테고리" description={`${categories.length}개의 카테고리로 글을 분류했습니다.`} />
+
+  <ul class="category-overview">
+    {
+      categories.map((category) => (
+        <li class="category-card">
+          <h2 class="category-card-title">
+            <a href={categoryUrl(category.name)}>
+              <Icon name="folder" size={18} />
+              {category.name}
+            </a>
+            <span class="count">{category.count}</span>
+          </h2>
+          <ul class="category-card-posts">
+            {category.latest.map((post) => (
+              <li>
+                <a href={postUrl(post)}>{post.data.title}</a>
+              </li>
+            ))}
+          </ul>
+          {category.count > category.latest.length && (
+            <a href={categoryUrl(category.name)} class="section-more">
+              {category.count}개 글 모두 보기 <Icon name="arrow-right" size={14} />
+            </a>
+          )}
+        </li>
+      ))
+    }
+  </ul>
+  {categories.length === 0 && <p class="empty-state">아직 카테고리가 없습니다.</p>}
+</BaseLayout>

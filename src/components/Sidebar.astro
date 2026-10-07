@@ -1,0 +1,92 @@
+---
+import { getCategories, getPosts, getTags, categoryUrl, tagUrl } from '../lib/posts';
+import { withBase } from '../lib/utils';
+import Icon from './Icon.astro';
+import Tag from './Tag.astro';
+
+interface Props {
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+const posts = await getPosts();
+const categories = getCategories(posts);
+const tags = getTags(posts).slice(0, 16);
+
+const links = [
+  { href: '/blog', label: '전체 글', icon: 'file' as const, count: posts.length },
+  { href: '/categories', label: '카테고리', icon: 'folder' as const },
+  { href: '/tags', label: '태그', icon: 'hash' as const },
+  { href: '/search', label: '검색', icon: 'search' as const },
+];
+
+const isCurrent = (href: string) => withBase(currentPath) === href;
+---
+
+<div class="sidebar-backdrop" data-sidebar-backdrop aria-hidden="true"></div>
+<aside id="site-sidebar" class="sidebar" aria-label="블로그 탐색" data-pagefind-ignore>
+  <div class="sidebar-inner">
+    <nav class="sidebar-section" aria-label="블로그 메뉴">
+      <ul class="sidebar-list">
+        {
+          links.map((link) => (
+            <li>
+              <a
+                href={withBase(link.href)}
+                class="sidebar-link"
+                aria-current={isCurrent(withBase(link.href)) ? 'page' : undefined}
+              >
+                <Icon name={link.icon} size={16} />
+                <span class="sidebar-link-label">{link.label}</span>
+                {link.count !== undefined && <span class="count">{link.count}</span>}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    {
+      categories.length > 0 && (
+        <nav class="sidebar-section" aria-labelledby="sidebar-categories">
+          <h2 id="sidebar-categories" class="sidebar-heading">
+            Categories
+          </h2>
+          <ul class="sidebar-list">
+            {categories.map((category) => {
+              const href = categoryUrl(category.name);
+              return (
+                <li>
+                  <a href={href} class="sidebar-link" aria-current={isCurrent(href) ? 'page' : undefined}>
+                    <span class="sidebar-link-label">{category.name}</span>
+                    <span class="count">{category.count}</span>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      )
+    }
+
+    {
+      tags.length > 0 && (
+        <section class="sidebar-section" aria-labelledby="sidebar-tags">
+          <h2 id="sidebar-tags" class="sidebar-heading">
+            Tags
+          </h2>
+          <ul class="tag-list">
+            {tags.map((tag) => (
+              <li>
+                <Tag name={tag.name} size="sm" active={isCurrent(tagUrl(tag.name))} />
+              </li>
+            ))}
+          </ul>
+          <a href={withBase('/tags')} class="sidebar-more">
+            모든 태그 보기 <Icon name="arrow-right" size={14} />
+          </a>
+        </section>
+      )
+    }
+  </div>
+</aside>

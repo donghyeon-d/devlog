@@ -1,0 +1,94 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostList from '../components/PostList.astro';
+import Tag from '../components/Tag.astro';
+import Icon from '../components/Icon.astro';
+import { SITE } from '../config';
+import { categoryUrl, getCategories, getPosts, getTags } from '../lib/posts';
+import { withBase } from '../lib/utils';
+
+const posts = await getPosts();
+const recent = posts.slice(0, SITE.recentPostCount);
+const categories = getCategories(posts);
+const tags = getTags(posts).slice(0, 20);
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE.title,
+  description: SITE.description,
+  url: new URL(withBase('/'), Astro.site).href,
+  inLanguage: SITE.lang,
+  author: { '@type': 'Person', name: SITE.author },
+};
+---
+
+<BaseLayout jsonLd={jsonLd}>
+  <section class="hero" aria-labelledby="hero-title">
+    <h1 id="hero-title" class="hero-title">
+      <span class="hero-greeting">{SITE.hero.greeting}</span>
+      {SITE.hero.intro}
+    </h1>
+    <ul class="hero-topics" aria-label="주요 주제">
+      {SITE.hero.topics.map((topic) => <li>{topic}</li>)}
+    </ul>
+  </section>
+
+  <section class="home-section" aria-labelledby="recent-title">
+    <div class="section-header">
+      <h2 id="recent-title" class="section-title">최근 글</h2>
+      {
+        posts.length > recent.length && (
+          <a href={withBase('/blog')} class="section-more">
+            전체 글 보기 <Icon name="arrow-right" size={14} />
+          </a>
+        )
+      }
+    </div>
+    <PostList posts={recent} headingLevel={3} />
+  </section>
+
+  {
+    categories.length > 0 && (
+      <section class="home-section" aria-labelledby="categories-title">
+        <div class="section-header">
+          <h2 id="categories-title" class="section-title">카테고리</h2>
+          <a href={withBase('/categories')} class="section-more">
+            전체 보기 <Icon name="arrow-right" size={14} />
+          </a>
+        </div>
+        <ul class="category-grid">
+          {categories.map((category) => (
+            <li>
+              <a href={categoryUrl(category.name)} class="category-link">
+                <Icon name="folder" size={16} />
+                <span class="category-link-name">{category.name}</span>
+                <span class="count">{category.count}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  {
+    tags.length > 0 && (
+      <section class="home-section" aria-labelledby="tags-title">
+        <div class="section-header">
+          <h2 id="tags-title" class="section-title">주요 태그</h2>
+          <a href={withBase('/tags')} class="section-more">
+            전체 보기 <Icon name="arrow-right" size={14} />
+          </a>
+        </div>
+        <ul class="tag-list">
+          {tags.map((tag) => (
+            <li>
+              <Tag name={tag.name} count={tag.count} />
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+</BaseLayout>

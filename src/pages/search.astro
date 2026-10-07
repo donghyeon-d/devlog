@@ -1,0 +1,173 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PageHeader from '../components/PageHeader.astro';
+import Icon from '../components/Icon.astro';
+import { getCategories, getPosts } from '../lib/posts';
+
+const categories = getCategories(await getPosts());
+---
+
+<BaseLayout title="검색" description="블로그의 모든 글을 검색합니다." noindex>
+  <PageHeader title="검색" description="제목, 설명, 카테고리, 태그, 본문 내용을 검색합니다." />
+
+  <div class="search" data-search data-base={import.meta.env.BASE_URL}>
+    <form class="search-form" role="search" action="" method="get" data-search-form>
+      <label for="search-input" class="sr-only">검색어</label>
+      <Icon name="search" size={18} class="search-form-icon" />
+      <input
+        id="search-input"
+        name="q"
+        type="search"
+        placeholder="예) MySQL CAST, WSL, go_router"
+        autocomplete="off"
+        enterkeyhint="search"
+        autofocus
+        aria-describedby="search-status"
+      />
+    </form>
+
+    {
+      categories.length > 1 && (
+        <fieldset class="search-filters">
+          <legend class="sr-only">카테고리 필터</legend>
+          <label>
+            <input type="radio" name="category" value="" checked data-search-filter />
+            <span>전체</span>
+          </label>
+          {categories.map((category) => (
+            <label>
+              <input type="radio" name="category" value={category.name} data-search-filter />
+              <span>{category.name}</span>
+            </label>
+          ))}
+        </fieldset>
+      )
+    }
+
+    <p id="search-status" class="search-status" role="status" aria-live="polite" data-search-status></p>
+    <ol class="search-results" data-search-results></ol>
+
+    <noscript>
+      <p class="empty-state">검색 기능을 사용하려면 JavaScript 를 활성화해 주세요.</p>
+    </noscript>
+  </div>
+</BaseLayout>
+
+<script>
+  interface PagefindResultData {
+    url: string;
+    excerpt: string;
+    meta: { title?: string; date?: string };
+    filters: { category?: string[] };
+  }
+  interface PagefindResult {
+    data(): Promise<PagefindResultData>;
+  }
+  interface PagefindSearch {
+    results: PagefindResult[];
+  }
+  interface Pagefind {
+    options(opts: Record<string, unknown>): Promise<void>;
+    debouncedSearch(
+      term: string,
+      opts?: Record<string, unknown>,
+      ms?: number,
+    ): Promise<PagefindSearch | null>;
+  }
+
+  const root = document.querySelector<HTMLElement>('[data-search]')!;
+  const form = root.querySelector<HTMLFormElement>('[data-search-form]')!;
+  const input = root.querySelector<HTMLInputElement>('#search-input')!;
+  const status = root.querySelector<HTMLElement>('[data-search-status]')!;
+  const list = root.querySelector<HTMLOListElement>('[data-search-results]')!;
+  const filters = [...root.querySelectorAll<HTMLInputElement>('[data-search-filter]')];
+  const base = (root.dataset.base ?? '/').replace(/\/?$/, '/');
+
+  let pagefind: Pagefind | null = null;
+  let loadFailed = false;
+
+  async function loadPagefind(): Promise<Pagefind | null> {
+    if (pagefind || loadFailed) return pagefind;
+    try {
+      const url = `${base}pagefind/pagefind.js`;
+      pagefind = (await import(/* @vite-ignore */ url)) as Pagefind;
+      await pagefind.options({ baseUrl: base, excerptLength: 24 });
+    } catch {
+      loadFailed = true;
+      status.textContent =
+        '검색 인덱스를 불러올 수 없습니다. 검색은 npm run build 후 npm run preview 에서 확인할 수 있습니다.';
+    }
+    return pagefind;
+  }
+
+  const escapeHtml = (value: string) =>
+    value.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+
+  /** pagefind 는 .html 이 붙은 경로를 반환하므로 확장자 없는 URL 로 바꾼다. */
+  const cleanUrl = (url: string) => url.replace(/\/index\.html$/, '/').replace(/\.html$/, '');
+
+  function renderResult(data: PagefindResultData): string {
+    const category = data.filters.category?.[0];
+    return `
+      <li class="search-result">
+        <a href="${escapeHtml(cleanUrl(data.url))}">
+          <span class="search-result-meta">${[category, data.meta.date].filter(Boolean).map((v) => escapeHtml(v!)).join(' · ')}</span>
+          <span class="search-result-title">${escapeHtml(data.meta.title ?? data.url)}</span>
+          <span class="search-result-excerpt">${data.excerpt}</span>
+        </a>
+      </li>`;
+  }
+
+  async function runSearch() {
+    const term = input.value.trim();
+    const category = filters.find((f) => f.checked)?.value ?? '';
+
+    const params = new URLSearchParams(location.search);
+    if (term) params.set('q', term);
+    else params.delete('q');
+    if (category) params.set('category', category);
+    else params.delete('category');
+    const query = params.toString();
+    history.replaceState(null, '', query ? `?${query}` : location.pathname);
+
+    if (!term) {
+      list.innerHTML = '';
+      status.textContent = '';
+      return;
+    }
+
+    const pf = await loadPagefind();
+    if (!pf) return;
+
+    const search = await pf.debouncedSearch(term, category ? { filters: { category } } : {}, 200);
+    if (!search) return; // 더 최신 검색어로 대체됨
+
+    const results = await Promise.all(search.results.slice(0, 30).map((r) => r.data()));
+    list.innerHTML = results.map(renderResult).join('');
+    status.textContent = results.length
+      ? `"${term}" 검색 결과 ${search.results.length}개`
+      : `"${term}" 에 대한 검색 결과가 없습니다.`;
+  }
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    runSearch();
+  });
+  input.addEventListener('input', runSearch);
+  filters.forEach((filter) => filter.addEventListener('change', runSearch));
+
+  // /search?q=... 로 진입한 경우 바로 검색
+  const params = new URLSearchParams(location.search);
+  const initialCategory = params.get('category');
+  if (initialCategory) {
+    const match = filters.find((f) => f.value === initialCategory);
+    if (match) match.checked = true;
+  }
+  const initial = params.get('q');
+  if (initial) {
+    input.value = initial;
+    runSearch();
+  } else {
+    loadPagefind(); // 미리 로드해서 첫 입력 지연을 줄인다.
+  }
+</script>

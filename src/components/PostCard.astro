@@ -1,0 +1,39 @@
+---
+/**
+ * 글 목록의 한 항목. 카드보다는 문서 목록에 가까운 형태로 표시한다.
+ */
+import { postReadingTime, postUrl, type Post } from '../lib/posts';
+import PostMeta from './PostMeta.astro';
+import Tag from './Tag.astro';
+
+interface Props {
+  post: Post;
+  headingLevel?: 2 | 3;
+}
+
+const { post, headingLevel = 2 } = Astro.props;
+const { title, description, date, updated, category, tags, draft } = post.data;
+const Heading = `h${headingLevel}` as 'h2' | 'h3';
+---
+
+<article class="post-item">
+  <Heading class="post-item-title">
+    <a href={postUrl(post)}>
+      {draft && <span class="draft-badge">Draft</span>}
+      {title}
+    </a>
+  </Heading>
+  <p class="post-item-description">{description}</p>
+  <PostMeta date={date} updated={updated} category={category} readingTime={postReadingTime(post)} />
+  {
+    tags.length > 0 && (
+      <ul class="tag-list post-item-tags" aria-label="태그">
+        {tags.map((tag) => (
+          <li>
+            <Tag name={tag} size="sm" />
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</article>

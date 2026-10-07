@@ -1,0 +1,21 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import { withBase } from '../lib/utils';
+---
+
+<BaseLayout title="404" description="페이지를 찾을 수 없습니다." noindex>
+  <section class="not-found">
+    <p class="not-found-code">404</p>
+    <h1 class="not-found-title">페이지를 찾을 수 없습니다.</h1>
+    <p class="not-found-description">주소가 바뀌었거나 삭제된 페이지일 수 있습니다.</p>
+    <div class="not-found-actions">
+      <a href={withBase('/')} class="button button-primary">
+        <Icon name="arrow-left" size={16} /> 홈으로 돌아가기
+      </a>
+      <a href={withBase('/search')} class="button">
+        <Icon name="search" size={16} /> 글 검색
+      </a>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,20 @@
+---
+import { tagUrl } from '../lib/posts';
+
+interface Props {
+  name: string;
+  count?: number;
+  size?: 'sm' | 'md';
+  active?: boolean;
+}
+
+const { name, count, size = 'md', active = false } = Astro.props;
+---
+
+<a
+  href={tagUrl(name)}
+  class:list={['tag', `tag-${size}`, { 'is-active': active }]}
+  aria-current={active ? 'page' : undefined}
+>
+  <span class="tag-hash" aria-hidden="true">#</span>{name}{count !== undefined && <span class="tag-count">{count}</span>}
+</a>

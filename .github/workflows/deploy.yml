@@ -1,0 +1,62 @@
+name: Deploy to GitHub Pages
+
+on:
+  # main 브랜치에 push 하면 자동 배포
+  push:
+    branches: [main]
+  # Actions 탭에서 수동 실행
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 동시에 여러 배포가 실행되면 마지막 것만 유지
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Configure GitHub Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (Astro + Pagefind)
+        run: npm run build
+        env:
+          # 예) https://username.github.io  /  커스텀 도메인이면 https://blog.example.com
+          SITE: ${{ steps.pages.outputs.origin }}
+          # 예) /devlog (프로젝트 페이지)  /  username.github.io 저장소나 커스텀 도메인이면 빈 값
+          BASE: ${{ steps.pages.outputs.base_path }}
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

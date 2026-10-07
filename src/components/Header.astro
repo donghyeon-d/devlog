@@ -1,0 +1,121 @@
+---
+import { SITE } from '../config';
+import { withBase } from '../lib/utils';
+import Icon from './Icon.astro';
+
+interface Props {
+  /** 현재 경로 (base 제외) – 활성 메뉴 표시용 */
+  currentPath: string;
+}
+
+const { currentPath } = Astro.props;
+
+const nav = [
+  { href: '/blog', label: '글' },
+  { href: '/categories', label: '카테고리' },
+  { href: '/tags', label: '태그' },
+  { href: '/about', label: 'About' },
+];
+
+const isActive = (href: string) => currentPath === href || currentPath.startsWith(`${href}/`);
+---
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <button
+      type="button"
+      class="icon-button menu-button"
+      aria-label="메뉴 열기"
+      aria-controls="site-sidebar"
+      aria-expanded="false"
+      data-menu-toggle
+    >
+      <Icon name="menu" size={20} />
+    </button>
+
+    <a href={withBase('/')} class="site-logo" aria-label={`${SITE.title} 홈`}>
+      <span class="site-logo-mark" aria-hidden="true">&gt;_</span>
+      <span class="site-logo-text">{SITE.title}</span>
+    </a>
+
+    <nav class="site-nav" aria-label="주요 메뉴">
+      <ul class="site-nav-list">
+        {
+          nav.map((item) => (
+            <li>
+              <a href={withBase(item.href)} aria-current={isActive(item.href) ? 'page' : undefined}>
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="site-header-actions">
+      <form class="header-search" action={withBase('/search')} method="get" role="search">
+        <label for="header-search-input" class="sr-only">글 검색</label>
+        <Icon name="search" size={16} class="header-search-icon" />
+        <input
+          id="header-search-input"
+          name="q"
+          type="search"
+          placeholder="검색"
+          autocomplete="off"
+          enterkeyhint="search"
+        />
+        <kbd class="header-search-kbd" aria-hidden="true">/</kbd>
+      </form>
+
+      <a href={withBase('/search')} class="icon-button search-link" aria-label="검색">
+        <Icon name="search" size={19} />
+      </a>
+
+      {
+        SITE.github && (
+          <a href={SITE.github} class="icon-button" aria-label="GitHub" target="_blank" rel="noopener noreferrer">
+            <Icon name="github" size={20} />
+          </a>
+        )
+      }
+    </div>
+  </div>
+</header>
+
+<script>
+  // "/" 키로 검색창 포커스 (입력 중일 때는 무시)
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
+    const target = event.target as HTMLElement | null;
+    if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+    const input = document.getElementById('header-search-input') as HTMLInputElement | null;
+    if (!input || input.offsetParent === null) return;
+    event.preventDefault();
+    input.focus();
+  });
+
+  // 모바일 사이드바(drawer) 열기/닫기
+  const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+  const sidebar = document.getElementById('site-sidebar');
+  const backdrop = document.querySelector<HTMLElement>('[data-sidebar-backdrop]');
+
+  const setOpen = (open: boolean) => {
+    if (!toggle || !sidebar) return;
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? '메뉴 닫기' : '메뉴 열기');
+    document.documentElement.toggleAttribute('data-sidebar-open', open);
+    if (open) sidebar.querySelector<HTMLElement>('a, button')?.focus();
+  };
+
+  toggle?.addEventListener('click', () => setOpen(toggle.getAttribute('aria-expanded') !== 'true'));
+  backdrop?.addEventListener('click', () => setOpen(false));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && document.documentElement.hasAttribute('data-sidebar-open')) {
+      setOpen(false);
+      toggle?.focus();
+    }
+  });
+  window.matchMedia('(min-width: 1024px)').addEventListener('change', (event) => {
+    if (event.matches) setOpen(false);
+  });
+</script>

@@ -1,0 +1,54 @@
+---
+import { categoryUrl } from '../lib/posts';
+import { formatDate, isoDate } from '../lib/utils';
+import Icon from './Icon.astro';
+
+interface Props {
+  date: Date;
+  updated?: Date;
+  category: string;
+  readingTime: number;
+  /** 카테고리를 링크로 표시할지 여부 (목록 안의 중첩 링크 방지용) */
+  linkCategory?: boolean;
+}
+
+const { date, updated, category, readingTime, linkCategory = true } = Astro.props;
+const showUpdated = updated && isoDate(updated) !== isoDate(date);
+---
+
+<ul class="post-meta">
+  <li class="post-meta-category">
+    {
+      linkCategory ? (
+        <a href={categoryUrl(category)}>
+          <Icon name="folder" size={14} />
+          {category}
+        </a>
+      ) : (
+        <span>
+          <Icon name="folder" size={14} />
+          {category}
+        </span>
+      )
+    }
+  </li>
+  <li>
+    <Icon name="calendar" size={14} />
+    <span class="sr-only">작성일</span>
+    <time datetime={isoDate(date)}>{formatDate(date)}</time>
+  </li>
+  {
+    showUpdated && (
+      <li class="post-meta-updated">
+        <Icon name="refresh" size={14} />
+        <span class="sr-only">수정일</span>
+        <span aria-hidden="true">수정</span>
+        <time datetime={isoDate(updated)}>{formatDate(updated)}</time>
+      </li>
+    )
+  }
+  <li>
+    <Icon name="clock" size={14} />
+    <span>{readingTime}분 읽기</span>
+  </li>
+</ul>

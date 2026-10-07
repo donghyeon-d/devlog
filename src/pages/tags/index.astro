@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import Tag from '../../components/Tag.astro';
+import { getPosts, getTags } from '../../lib/posts';
+
+const posts = await getPosts();
+const tags = getTags(posts);
+const byName = [...tags].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+---
+
+<BaseLayout title="태그" description="태그별로 글을 찾아볼 수 있습니다.">
+  <PageHeader title="태그" description={`${tags.length}개의 태그가 있습니다.`} />
+
+  <section aria-labelledby="popular-tags" class="home-section">
+    <h2 id="popular-tags" class="section-title">많이 사용한 태그</h2>
+    <ul class="tag-list">
+      {
+        tags.slice(0, 12).map((tag) => (
+          <li>
+            <Tag name={tag.name} count={tag.count} />
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section aria-labelledby="all-tags" class="home-section">
+    <h2 id="all-tags" class="section-title">전체 태그 (가나다/ABC 순)</h2>
+    <ul class="tag-table">
+      {
+        byName.map((tag) => (
+          <li>
+            <Tag name={tag.name} count={tag.count} />
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+  {tags.length === 0 && <p class="empty-state">아직 태그가 없습니다.</p>}
+</BaseLayout>

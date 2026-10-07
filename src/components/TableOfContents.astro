@@ -1,0 +1,115 @@
+---
+/**
+ * H2 / H3 를 기반으로 목차를 만든다.
+ *
+ * - variant="aside": PC 오른쪽 sticky 목차 (현재 읽는 섹션 표시)
+ * - variant="inline": 모바일/태블릿 본문 상단의 접이식 목차
+ */
+import type { MarkdownHeading } from 'astro';
+import Icon from './Icon.astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+  variant: 'aside' | 'inline';
+}
+
+const { headings, variant } = Astro.props;
+
+interface TocItem {
+  slug: string;
+  text: string;
+  number: string;
+  children: TocItem[];
+}
+
+function buildToc(list: MarkdownHeading[]): TocItem[] {
+  const items: TocItem[] = [];
+  for (const heading of list) {
+    if (heading.depth === 2) {
+      items.push({ slug: heading.slug, text: heading.text, number: `${items.length + 1}.`, children: [] });
+    } else if (heading.depth === 3) {
+      const parent = items.at(-1);
+      if (parent) {
+        parent.children.push({
+          slug: heading.slug,
+          text: heading.text,
+          number: `${parent.number}${parent.children.length + 1}`,
+          children: [],
+        });
+      } else {
+        // H2 없이 H3 가 먼저 나오는 경우 최상위 항목으로 취급
+        items.push({ slug: heading.slug, text: heading.text, number: `${items.length + 1}.`, children: [] });
+      }
+    }
+  }
+  return items;
+}
+
+const toc = buildToc(headings);
+---
+
+{
+  toc.length > 0 &&
+    (variant === 'aside' ? (
+      <nav class="toc toc-aside" aria-labelledby="toc-aside-title" data-pagefind-ignore>
+        <p id="toc-aside-title" class="toc-title">
+          On this page
+        </p>
+        <ol class="toc-list">
+          {toc.map((item) => (
+            <li>
+              <a href={`#${item.slug}`} data-toc-link={item.slug}>
+                <span class="toc-number">{item.number}</span>
+                {item.text}
+              </a>
+              {item.children.length > 0 && (
+                <ol>
+                  {item.children.map((child) => (
+                    <li>
+                      <a href={`#${child.slug}`} data-toc-link={child.slug}>
+                        <span class="toc-number">{child.number}</span>
+                        {child.text}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </li>
+          ))}
+        </ol>
+        <a href="#top" class="toc-top">
+          맨 위로
+        </a>
+      </nav>
+    ) : (
+      <details class="toc toc-inline" data-pagefind-ignore>
+        <summary>
+          <Icon name="list" size={16} />
+          <span>목차</span>
+          <Icon name="chevron-down" size={16} class="toc-chevron" />
+        </summary>
+        <ol class="toc-list">
+          {toc.map((item) => (
+            <li>
+              <a href={`#${item.slug}`}>
+                <span class="toc-number">{item.number}</span>
+                {item.text}
+              </a>
+              {item.children.length > 0 && (
+                <ol>
+                  {item.children.map((child) => (
+                    <li>
+                      <a href={`#${child.slug}`}>
+                        <span class="toc-number">{child.number}</span>
+                        {child.text}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </li>
+          ))}
+        </ol>
+      </details>
+    ))
+}

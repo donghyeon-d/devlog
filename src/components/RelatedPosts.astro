@@ -1,0 +1,31 @@
+---
+import { postUrl, type Post } from '../lib/posts';
+import { formatDate, isoDate } from '../lib/utils';
+
+interface Props {
+  posts: Post[];
+}
+
+const { posts } = Astro.props;
+---
+
+{
+  posts.length > 0 && (
+    <section class="related" aria-labelledby="related-title" data-pagefind-ignore>
+      <h2 id="related-title" class="section-title">
+        관련 글
+      </h2>
+      <ul class="related-list">
+        {posts.map((post) => (
+          <li>
+            <a href={postUrl(post)} class="related-link">
+              <span class="related-category">{post.data.category}</span>
+              <span class="related-title">{post.data.title}</span>
+              <time datetime={isoDate(post.data.date)}>{formatDate(post.data.date)}</time>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}

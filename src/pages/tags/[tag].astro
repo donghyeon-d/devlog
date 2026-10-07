@@ -1,0 +1,31 @@
+---
+import type { GetStaticPaths } from 'astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PageHeader from '../../components/PageHeader.astro';
+import PostList from '../../components/PostList.astro';
+import { getPosts, getTags, type Post } from '../../lib/posts';
+import { slugify } from '../../lib/utils';
+
+export const getStaticPaths = (async () => {
+  const posts = await getPosts();
+  return getTags(posts).map((tag) => ({
+    params: { tag: tag.slug },
+    props: {
+      name: tag.name,
+      posts: posts.filter((post) => post.data.tags.some((t) => slugify(t) === tag.slug)),
+    },
+  }));
+}) satisfies GetStaticPaths;
+
+interface Props {
+  name: string;
+  posts: Post[];
+}
+
+const { name, posts } = Astro.props;
+---
+
+<BaseLayout title={`#${name}`} description={`${name} 태그가 달린 글 ${posts.length}개를 최신순으로 보여줍니다.`}>
+  <PageHeader eyebrow="Tag" title={`#${name}`} description={`${posts.length}개의 글`} />
+  <PostList posts={posts} />
+</BaseLayout>

@@ -1,0 +1,17 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+  /** 제목 위 작은 라벨 (예: Category, Tag) */
+  eyebrow?: string;
+}
+
+const { title, description, eyebrow } = Astro.props;
+---
+
+<header class="page-header">
+  {eyebrow && <p class="page-eyebrow">{eyebrow}</p>}
+  <h1 class="page-title">{title}</h1>
+  {description && <p class="page-description">{description}</p>}
+  <slot />
+</header>
