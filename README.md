@@ -72,6 +72,12 @@ src/content/blog/linux/my-new-post.md
 - `_` 로 시작하는 파일(`_memo.md`)은 빌드에서 무시됩니다.
 - 폴더 이름은 URL 용이고, 화면에 보이는 카테고리는 frontmatter 의 `category` 값입니다.
 
+템플릿이 `src/content/blog/_template.md` 에 있습니다. 복사해서 시작하세요.
+
+```bash
+cp src/content/blog/_template.md src/content/blog/linux/my-new-post.md
+```
+
 ### 2. frontmatter 작성
 
 ```md
